@@ -176,6 +176,15 @@ uv pip install Pillow pytesseract PyMuPDF python-docx ollama
 With the environment activated and dependencies installed, run the script using:
 
 ### 6. Running the Script🎉
+
+**Note:** For testing purposes, you can use the provided `sample_data` directory as your input. For example:
+
+```zsh
+python main.py --input_dir ./sample_data --mode 1 --dry_run yes
+```
+
+To run with your own files, replace `/path/to/your/files` with the actual path to your input directory.
+
 ```zsh
 python main.py --input_dir /path/to/your/files --mode 1 --dry_run yes
 ```
