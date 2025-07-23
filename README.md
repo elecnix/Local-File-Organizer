@@ -51,6 +51,11 @@ After:
 
 ## Updates 🚀
 
+**[July 2025] v0.0.3**:
+* **Full Audio File Support**: Transcribe audio using Whisper and organize based on content using Ollama.
+* **Ollama Integration Enhanced**: Fully transitioned to Ollama for all AI processing (text, image, and audio), removing all Nexa dependencies.
+* **Improved Argument Handling**: `--input_dir` and `--input_file` are now mutually exclusive and required.
+
 **[September 2024] v0.0.2**:
 * Now powered by Ollama for local AI processing!
 * Dry Run Mode: check sorting results before committing changes
@@ -68,7 +73,7 @@ To update the project, navigate to the project directory and run `git pull`. The
 - [ ] Copilot Mode: chat with AI to tell AI how you want to sort the file (ie. read and rename all the PDFs)
 - [ ] Change models with CLI 
 - [ ] ebook format support
-- [ ] audio file support
+- [x] audio file support
 - [ ] video file support
 - [ ] Implement best practices like Johnny Decimal
 - [ ] Check file duplication
