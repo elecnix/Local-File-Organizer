@@ -7,20 +7,7 @@ from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename  # Import sanitize_filename
 
-def get_text_from_generator(generator):
-    """Extract text from the generator response."""
-    response_text = ""
-    try:
-        while True:
-            response = next(generator)
-            choices = response.get('choices', [])
-            for choice in choices:
-                delta = choice.get('delta', {})
-                if 'content' in delta:
-                    response_text += delta['content']
-    except StopIteration:
-        pass
-    return response_text
+
 
 def process_single_image(image_path, image_inference, text_inference, silent=False, log_file=None):
     """Process a single image file to generate metadata."""
@@ -68,8 +55,7 @@ def generate_image_metadata(image_path, progress, task_id, image_inference, text
 
     # Step 1: Generate description using image_inference
     description_prompt = "Please provide a detailed description of this image, focusing on the main subject and any important details."
-    description_generator = image_inference._chat(description_prompt, image_path)
-    description = get_text_from_generator(description_generator).strip()
+    description = image_inference.generate_vision(description_prompt, image_path).strip()
     progress.update(task_id, advance=1 / total_steps)
 
     # Step 2: Generate filename using text_inference
@@ -88,8 +74,7 @@ Now generate the filename.
 Output only the filename, without any additional text.
 
 Filename:"""
-    filename_response = text_inference.create_completion(filename_prompt)
-    filename = filename_response['choices'][0]['text'].strip()
+    filename = text_inference.generate(filename_prompt).strip()
     # Remove 'Filename:' prefix if present
     filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
@@ -116,8 +101,7 @@ Now generate the category.
 Output only the category, without any additional text.
 
 Category:"""
-    foldername_response = text_inference.create_completion(foldername_prompt)
-    foldername = foldername_response['choices'][0]['text'].strip()
+    foldername = text_inference.generate(foldername_prompt).strip()
     # Remove 'Category:' prefix if present
     foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)

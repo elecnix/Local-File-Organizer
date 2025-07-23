@@ -52,12 +52,11 @@ After:
 ## Updates 🚀
 
 **[2024/09] v0.0.2**:
-* Featured by [Nexa Gallery](https://nexaai.com/gallery) and [Nexa SDK Cookbook](https://github.com/NexaAI/nexa-sdk/tree/main/examples)!
+* Now powered by Ollama for local AI processing!
 * Dry Run Mode: check sorting results before committing changes
 * Silent Mode: save all logs to a txt file for quieter operation
 * Added file support:  `.md`, .`excel`, `.ppt`, and `.csv` 
 * Three sorting options: by content, by date, and by type
-* The default text model is now [Llama3.2 3B](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q3_K_M/file)
 * Improved CLI interaction experience
 * Added real-time progress bar for file analysis
 
@@ -83,13 +82,13 @@ This intelligent file organizer harnesses the power of advanced AI models, inclu
 
 * Scanning a specified input directory for files.
 * Content Understanding: 
-  - **Textual Analysis**: Uses the [Llama3.2 3B](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q3_K_M/file) to analyze and summarize text-based content, generating relevant descriptions and filenames.
-  - **Visual Content Analysis**: Uses the [LLaVA-v1.6](https://nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/file) , based on Vicuna-7B, to interpret visual files such as images, providing context-aware categorization and descriptions.
+  - **Textual Analysis**: Uses a local Llama 3 model (via Ollama) to analyze and summarize text-based content, generating relevant descriptions and filenames.
+  - **Visual Content Analysis**: Uses a local LLaVA model (via Ollama) to interpret visual files such as images, providing context-aware categorization and descriptions.
 
 * Understanding the content of your files (text, images, and more) to generate relevant descriptions, folder names, and filenames.
 * Organizing the files into a new directory structure based on the generated metadata.
 
-The best part? All AI processing happens 100% on your local device using the [Nexa SDK](https://github.com/NexaAI/nexa-sdk). No internet connection required, no data leaves your computer, and no AI API is needed - keeping your files completely private and secure.
+The best part? All AI processing happens 100% on your local device using [Ollama](https://ollama.com/). No internet connection required, no data leaves your computer, and no AI API is needed - keeping your files completely private and secure.
 
 
 ## Supported File Types 📁
@@ -143,20 +142,16 @@ Activate the environment:
 conda activate local_file_organizer
 ```
 
-### 4. Install Nexa SDK ️
+### 4. Install Ollama and Download Models
 
-#### CPU Installation
-To install the CPU version of Nexa SDK, run:
-```bash
-pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
-```
+Download and install Ollama from [ollama.com](https://ollama.com/).
 
-#### GPU Installation (Metal - macOS)
-For the GPU version supporting Metal (macOS), run:
+Once Ollama is installed, download the necessary models:
+
 ```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+ollama pull llama3
+ollama pull llava
 ```
-For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** support, please refer to the [Installation section](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#installation) in the main README.
 
 
 ### 5. Install Dependencies 
@@ -169,13 +164,13 @@ For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** 
 
 2. Install the required dependencies:
    ```zsh
-   pip install -r requirements.txt
+   uv pip install -r requirements.txt
    ```
 
 **Note:** If you encounter issues with any packages, install them individually:
 
 ```zsh
-pip install nexa Pillow pytesseract PyMuPDF python-docx
+uv pip install Pillow pytesseract PyMuPDF python-docx ollama
 ```
 
 With the environment activated and dependencies installed, run the script using:
@@ -187,10 +182,9 @@ python main.py
 
 ## Notes
 
-- **SDK Models:**
-  - The script uses `NexaVLMInference` and `NexaTextInference` models [usage](https://docs.nexaai.com/sdk/python-interface/gguf).
-  - Ensure you have access to these models and they are correctly set up.
-  - You may need to download model files or configure paths.
+- **Ollama Models:**
+  - The script uses `llama3` for text analysis and `llava` for image analysis.
+  - Ensure these models are downloaded and running in Ollama.
 
 
 - **Dependencies:**

@@ -1,5 +1,8 @@
 import os
 import time
+import argparse
+import sys
+from rich.console import Console
 
 from file_utils import (
     display_directory_tree,
@@ -24,7 +27,12 @@ from image_data_processing import (
 )
 
 from output_filter import filter_specific_output  # Import the context manager
-from nexa.gguf import NexaVLMInference, NexaTextInference  # Import model classes
+try:
+    from ollama_inference import OllamaVLMInference, OllamaTextInference # Import Ollama inference classes
+    ollama_available = True
+except Exception as e:
+    print(f"Warning: Ollama client not available. AI-powered content organization will be disabled. Error: {e}")
+    ollama_available = False
 
 def ensure_nltk_data():
     """Ensure that NLTK data is downloaded efficiently and quietly."""
@@ -40,41 +48,23 @@ text_inference = None
 def initialize_models():
     """Initialize the models if they haven't been initialized yet."""
     global image_inference, text_inference
-    if image_inference is None or text_inference is None:
-        # Initialize the models
-        model_path = "llava-v1.6-vicuna-7b:q4_0"
-        model_path_text = "Llama3.2-3B-Instruct:q3_K_M"
+    if ollama_available and (image_inference is None or text_inference is None):
 
         # Use the filter_specific_output context manager
         with filter_specific_output():
             # Initialize the image inference model
-            image_inference = NexaVLMInference(
-                model_path=model_path,
-                local_path=None,
-                stop_words=[],
-                temperature=0.3,
-                max_new_tokens=3000,
-                top_k=3,
-                top_p=0.2,
-                profiling=False
-                # add n_ctx if out of context window usage: n_ctx=2048
+            image_inference = OllamaVLMInference(
+                model_name="llava"
             )
 
             # Initialize the text inference model
-            text_inference = NexaTextInference(
-                model_path=model_path_text,
-                local_path=None,
-                stop_words=[],
-                temperature=0.5,
-                max_new_tokens=3000,  # Adjust as needed
-                top_k=3,
-                top_p=0.3,
-                profiling=False
-                # add n_ctx if out of context window usage: n_ctx=2048
-
+            text_inference = OllamaTextInference(
+                model_name="llama3"
             )
         print("**----------------------------------------------**")
         print("**       Image inference model initialized      **")
+    elif not ollama_available:
+        print("AI models not initialized because Ollama client is not available.")
         print("**       Text inference model initialized       **")
         print("**----------------------------------------------**")
 
@@ -118,7 +108,8 @@ def get_mode_selection():
     """Prompt the user to select a mode."""
     while True:
         print("Please choose the mode to organize your files:")
-        print("1. By Content")
+        if ollama_available:
+            print("1. By Content")
         print("2. By Date")
         print("3. By Type")
         response = input("Enter 1, 2, or 3 (or type '/exit' to exit): ").strip()
@@ -126,7 +117,10 @@ def get_mode_selection():
             print("Exiting program.")
             exit()
         elif response == '1':
-            return 'content'
+            if ollama_available:
+                return 'content'
+            else:
+                print("Invalid selection. 'By Content' mode is not available because Ollama client is not available.")
         elif response == '2':
             return 'date'
         elif response == '3':
@@ -135,202 +129,136 @@ def get_mode_selection():
             print("Invalid selection. Please enter 1, 2, or 3. To exit, type '/exit'.")
 
 def main():
+    parser = argparse.ArgumentParser(description="Organize files based on content, date, or type.")
+    parser.add_argument("--input_dir", type=str, required=True, help="Path of the directory to organize.")
+    parser.add_argument("--output_dir", type=str, default="", help="Path to store organized files and folders (default: 'organized_folder' in input directory).")
+    parser.add_argument("--mode", type=int, choices=[1, 2, 3], required=True, help="Mode to organize files: 1 (By Content), 2 (By Date), 3 (By Type).")
+    parser.add_argument("--silent", type=str, choices=["yes", "no"], default="no", help="Enable silent mode (yes/no).")
+
+    args = parser.parse_args()
+
+    console = Console()
+
+    silent_mode = args.silent == 'yes'
+
+    log_file = None
+    if silent_mode:
+        log_file_path = os.path.join(os.getcwd(), "log.txt")
+        log_file = open(log_file_path, "w")
+        sys.stdout = log_file
+        sys.stderr = log_file
+
+    input_dir = args.input_dir
+    console.print(f"Input path successfully uploaded: {input_dir}")
+    console.print("--------------------------------------------------")
+
+    if args.output_dir:
+        output_dir = args.output_dir
+    else:
+        output_dir = os.path.join(input_dir, "organized_folder")
+    console.print(f"Output path successfully set to: {output_dir}")
+    console.print("--------------------------------------------------")
+
     # Ensure NLTK data is downloaded efficiently and quietly
     ensure_nltk_data()
 
     # Start with dry run set to True
     dry_run = True
 
-    # Display silent mode explanation before asking
-    print("-" * 50)
-    print("**NOTE: Silent mode logs all outputs to a text file instead of displaying them in the terminal.")
-    silent_mode = get_yes_no("Would you like to enable silent mode? (yes/no): ")
-    if silent_mode:
-        log_file = 'operation_log.txt'
+    start_time = time.time()
+    file_paths = collect_file_paths(input_dir)
+    end_time = time.time()
+
+    console.print(f"Time taken to load file paths: {end_time - start_time:.2f} seconds")
+    console.print("--------------------------------------------------")
+    console.print("Directory tree before organizing:")
+    display_directory_tree(input_dir)
+
+    console.print("**************************************************")
+
+    mode = args.mode
+    operations = []
+
+    if mode == 1:
+        # Proceed with content mode
+        if not silent_mode:
+            console.print("Checking if the model is already downloaded. If not, downloading it now.")
+        initialize_models()
+
+        if not silent_mode:
+            console.print("**************************************************")
+            console.print("The file upload was successful. Processing may take a few minutes.")
+            console.print("**************************************************")
+
+        # Separate files by type
+        image_files, text_files = separate_files_by_type(file_paths)
+
+        # Prepare text tuples for processing
+        text_tuples = []
+        for fp in text_files:
+            # Use read_file_data to read the file content
+            text_content = read_file_data(fp)
+            if text_content is None:
+                message = f"Unsupported or unreadable text file format: {fp}"
+                if silent_mode:
+                    if log_file:
+                        log_file.write(message + '\n')
+                else:
+                    console.print(message)
+                continue  # Skip unsupported or unreadable files
+            text_tuples.append((fp, text_content))
+
+        # Process files sequentially
+        data_images = process_image_files(image_files, image_inference, text_inference, silent=silent_mode, log_file=log_file)
+        data_texts = process_text_files(text_tuples, text_inference, silent=silent_mode, log_file=log_file)
+
+        # Prepare for copying and renaming
+        renamed_files = set()
+        processed_files = set()
+
+        # Combine all data
+        all_data = data_images + data_texts
+
+        # Compute the operations
+        operations = compute_operations(
+            all_data,
+            output_dir,
+            renamed_files,
+            processed_files
+        )
+
+    elif mode == 2:
+        # Process files by date
+        operations = process_files_by_date(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
+    elif mode == 3:
+        # Process files by type
+        operations = process_files_by_type(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
     else:
-        log_file = None
+        console.print("Invalid mode selected.")
+        return
 
-    while True:
-        # Paths configuration
-        if not silent_mode:
-            print("-" * 50)
+    # Simulate and display the proposed directory tree
+    console.print("-" * 50)
+    console.print("Proposed directory structure:")
+    console.print(os.path.abspath(output_dir))
+    simulated_tree = simulate_directory_tree(operations, output_dir)
+    print_simulated_tree(simulated_tree)
+    console.print("-" * 50)
 
-        # Get input and output paths once per directory
-        input_path = input("Enter the path of the directory you want to organize: ").strip()
-        while not os.path.exists(input_path):
-            message = f"Input path {input_path} does not exist. Please enter a valid path."
-            if silent_mode:
-                with open(log_file, 'a') as f:
-                    f.write(message + '\n')
-            else:
-                print(message)
-            input_path = input("Enter the path of the directory you want to organize: ").strip()
+    # Create the output directory now
+    os.makedirs(output_dir, exist_ok=True)
 
-        # Confirm successful input path
-        message = f"Input path successfully uploaded: {input_path}"
-        if silent_mode:
-            with open(log_file, 'a') as f:
-                f.write(message + '\n')
-        else:
-            print(message)
-        if not silent_mode:
-            print("-" * 50)
+    # Perform the actual file operations
+    console.print("Performing file operations...")
+    execute_operations(
+        operations,
+        dry_run=dry_run,
+        silent=silent_mode,
+        log_file=log_file
+    )
 
-        # Default output path is a folder named "organized_folder" in the same directory as the input path
-        output_path = input("Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory): ").strip()
-        if not output_path:
-            # Get the parent directory of the input path and append 'organized_folder'
-            output_path = os.path.join(os.path.dirname(input_path), 'organized_folder')
-
-        # Confirm successful output path
-        message = f"Output path successfully set to: {output_path}"
-        if silent_mode:
-            with open(log_file, 'a') as f:
-                f.write(message + '\n')
-        else:
-            print(message)
-        if not silent_mode:
-            print("-" * 50)
-
-        # Start processing files
-        start_time = time.time()
-        file_paths = collect_file_paths(input_path)
-        end_time = time.time()
-
-        message = f"Time taken to load file paths: {end_time - start_time:.2f} seconds"
-        if silent_mode:
-            with open(log_file, 'a') as f:
-                f.write(message + '\n')
-        else:
-            print(message)
-        if not silent_mode:
-            print("-" * 50)
-            print("Directory tree before organizing:")
-            display_directory_tree(input_path)
-
-            print("*" * 50)
-
-        # Loop for selecting sorting methods
-        while True:
-            mode = get_mode_selection()
-
-            if mode == 'content':
-                # Proceed with content mode
-                # Initialize models once
-                if not silent_mode:
-                    print("Checking if the model is already downloaded. If not, downloading it now.")
-                initialize_models()
-
-                if not silent_mode:
-                    print("*" * 50)
-                    print("The file upload was successful. Processing may take a few minutes.")
-                    print("*" * 50)
-
-                # Prepare to collect link type statistics
-                link_type_counts = {'hardlink': 0, 'symlink': 0}
-
-                # Separate files by type
-                image_files, text_files = separate_files_by_type(file_paths)
-
-                # Prepare text tuples for processing
-                text_tuples = []
-                for fp in text_files:
-                    # Use read_file_data to read the file content
-                    text_content = read_file_data(fp)
-                    if text_content is None:
-                        message = f"Unsupported or unreadable text file format: {fp}"
-                        if silent_mode:
-                            with open(log_file, 'a') as f:
-                                f.write(message + '\n')
-                        else:
-                            print(message)
-                        continue  # Skip unsupported or unreadable files
-                    text_tuples.append((fp, text_content))
-
-                # Process files sequentially
-                data_images = process_image_files(image_files, image_inference, text_inference, silent=silent_mode, log_file=log_file)
-                data_texts = process_text_files(text_tuples, text_inference, silent=silent_mode, log_file=log_file)
-
-                # Prepare for copying and renaming
-                renamed_files = set()
-                processed_files = set()
-
-                # Combine all data
-                all_data = data_images + data_texts
-
-                # Compute the operations
-                operations = compute_operations(
-                    all_data,
-                    output_path,
-                    renamed_files,
-                    processed_files
-                )
-
-            elif mode == 'date':
-                # Process files by date
-                operations = process_files_by_date(file_paths, output_path, dry_run=False, silent=silent_mode, log_file=log_file)
-            elif mode == 'type':
-                # Process files by type
-                operations = process_files_by_type(file_paths, output_path, dry_run=False, silent=silent_mode, log_file=log_file)
-            else:
-                print("Invalid mode selected.")
-                return
-
-            # Simulate and display the proposed directory tree
-            print("-" * 50)
-            message = "Proposed directory structure:"
-            if silent_mode:
-                with open(log_file, 'a') as f:
-                    f.write(message + '\n')
-            else:
-                print(message)
-                print(os.path.abspath(output_path))
-                simulated_tree = simulate_directory_tree(operations, output_path)
-                print_simulated_tree(simulated_tree)
-                print("-" * 50)
-
-            # Ask user if they want to proceed
-            proceed = get_yes_no("Would you like to proceed with these changes? (yes/no): ")
-            if proceed:
-                # Create the output directory now
-                os.makedirs(output_path, exist_ok=True)
-
-                # Perform the actual file operations
-                message = "Performing file operations..."
-                if silent_mode:
-                    with open(log_file, 'a') as f:
-                        f.write(message + '\n')
-                else:
-                    print(message)
-                execute_operations(
-                    operations,
-                    dry_run=False,
-                    silent=silent_mode,
-                    log_file=log_file
-                )
-
-                message = "The files have been organized successfully."
-                if silent_mode:
-                    with open(log_file, 'a') as f:
-                        f.write("-" * 50 + '\n' + message + '\n' + "-" * 50 + '\n')
-                else:
-                    print("-" * 50)
-                    print(message)
-                    print("-" * 50)
-                break  # Exit the sorting method loop after successful operation
-            else:
-                # Ask if the user wants to try another sorting method
-                another_sort = get_yes_no("Would you like to choose another sorting method? (yes/no): ")
-                if another_sort:
-                    continue  # Loop back to mode selection
-                else:
-                    print("Operation canceled by the user.")
-                    break  # Exit the sorting method loop
-
-        # Ask if the user wants to organize another directory
-        another_directory = get_yes_no("Would you like to organize another directory? (yes/no): ")
-        if not another_directory:
-            break  # Exit the main loop
+    console.print("The files have been organized successfully.")
+    console.print("-" * 50)
 
 
 if __name__ == '__main__':

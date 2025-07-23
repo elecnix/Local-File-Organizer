@@ -1,10 +1,8 @@
 import re
 import os
 import time
-import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from data_processing_common import sanitize_filename
@@ -18,8 +16,7 @@ Text: {text}
 
 Summary:"""
 
-    response = text_inference.create_completion(prompt)
-    summary = response['choices'][0]['text'].strip()
+    summary = text_inference.generate(prompt).strip()
     return summary
 
 def process_single_text_file(args, text_inference, silent=False, log_file=None):
@@ -90,8 +87,7 @@ Now generate the filename.
 Output only the filename, without any additional text.
 
 Filename:"""
-    filename_response = text_inference.create_completion(filename_prompt)
-    filename = filename_response['choices'][0]['text'].strip()
+    filename = text_inference.generate(filename_prompt).strip()
     # Remove 'Filename:' prefix if present
     filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
@@ -115,8 +111,7 @@ Now generate the category.
 Output only the category, without any additional text.
 
 Category:"""
-    foldername_response = text_inference.create_completion(foldername_prompt)
-    foldername = foldername_response['choices'][0]['text'].strip()
+    foldername = text_inference.generate(foldername_prompt).strip()
     # Remove 'Category:' prefix if present
     foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
