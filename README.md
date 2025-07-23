@@ -56,6 +56,7 @@ After:
 * **Full Audio File Support**: Transcribe audio using Whisper and organize based on content using Ollama.
 * **Ollama Integration Enhanced**: Fully transitioned to Ollama for all AI processing (text, image, and audio), removing all Nexa dependencies.
 * **Improved Argument Handling**: `--input_dir` and `--input_file` are now mutually exclusive and required.
+* **Image Filename Date Prefixing**: Automatically prefixes image filenames with dates extracted from EXIF data, filenames, or LLM fallback, ensuring accurate and consistent dating.
 
 **[September 2024] v0.0.2**:
 * Now powered by Ollama for local AI processing!
