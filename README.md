@@ -51,7 +51,7 @@ After:
 
 ## Updates 🚀
 
-**[2024/09] v0.0.2**:
+**[September 2024] v0.0.2**:
 * Now powered by Ollama for local AI processing!
 * Dry Run Mode: check sorting results before committing changes
 * Silent Mode: save all logs to a txt file for quieter operation
@@ -60,7 +60,7 @@ After:
 * Improved CLI interaction experience
 * Added real-time progress bar for file analysis
 
-Please update the project by deleting the original project folder and reinstalling the requirements. Refer to the Installation section for detailed steps.
+To update the project, navigate to the project directory and run `git pull`. Then, reinstall the dependencies as described in the Installation section.
 
 
 ## Roadmap 📅

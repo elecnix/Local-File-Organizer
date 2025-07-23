@@ -1,8 +1,5 @@
 import os
-import re
-import shutil
-from PIL import Image
-import pytesseract
+
 import fitz  # PyMuPDF
 import docx
 import pandas as pd  # Import pandas to read Excel and CSV files
@@ -118,12 +115,14 @@ def collect_file_paths(base_path):
         return file_paths
 
 def separate_files_by_type(file_paths):
-    """Separate files into images and text files based on their extensions."""
+    """Separate files into images, text, and audio files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
     text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
+    audio_extensions = ('.mp3', '.wav', '.flac', '.aac', '.ogg') # Common audio extensions
+
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
-
-    return image_files, text_files  # Return only two values
+    audio_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in audio_extensions]
+    return image_files, text_files, audio_files
 
 # TODO:ebook: '.mobi', '.azw', '.azw3', '.epub',

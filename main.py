@@ -27,13 +27,14 @@ from image_data_processing import (
     process_image_files
 )
 
-from output_filter import filter_specific_output  # Import the context manager
-try:
-    from ollama_inference import OllamaVLMInference, OllamaTextInference # Import Ollama inference classes
-    ollama_available = True
-except Exception as e:
-    print(f"Warning: Ollama client not available. AI-powered content organization will be disabled. Error: {e}")
-    ollama_available = False
+from audio_data_processing import (
+    initialize_whisper_model,
+    process_audio_files
+)
+
+
+
+from ollama_inference import OllamaTextInference, OllamaVLMInference # Import OllamaTextInference and OllamaVLMInference
 
 def ensure_nltk_data():
     """Ensure that NLTK data is downloaded efficiently and quietly."""
@@ -43,31 +44,40 @@ def ensure_nltk_data():
     nltk.download('wordnet', quiet=True)
 
 # Initialize models
+
 image_inference = None
 text_inference = None
+audio_inference = None
 
-def initialize_models():
+def initialize_models(silent_mode=False):
     """Initialize the models if they haven't been initialized yet."""
-    global image_inference, text_inference
-    if ollama_available and (image_inference is None or text_inference is None):
-
-        # Use the filter_specific_output context manager
-        with filter_specific_output():
-            # Initialize the image inference model
-            image_inference = OllamaVLMInference(
-                model_name="llava"
-            )
-
-            # Initialize the text inference model
-            text_inference = OllamaTextInference(
-                model_name="llama3"
-            )
-        print("**----------------------------------------------**")
-        print("**       Image inference model initialized      **")
-    elif not ollama_available:
-        print("AI models not initialized because Ollama client is not available.")
-        print("**       Text inference model initialized       **")
-        print("**----------------------------------------------**")
+    global image_inference, text_inference, audio_inference
+    
+    # Initialize Ollama for text inference
+    if text_inference is None:
+        model_name_text_ollama = "llama3"
+        text_inference = OllamaTextInference(
+            model_name=model_name_text_ollama
+        )
+    # Initialize Ollama for image inference
+    if image_inference is None:
+        model_name_image_ollama = "llava"
+        image_inference = OllamaVLMInference(
+            model_name=model_name_image_ollama
+        )
+    # Initialize Ollama for audio inference
+    if audio_inference is None:
+        model_name_audio_ollama = "llama3"
+        audio_inference = OllamaTextInference(
+            model_name=model_name_audio_ollama
+        )
+        if not silent_mode:
+            console.print("**----------------------------------------------**")
+            console.print("**       Ollama inference model initialized     **")
+            console.print("**----------------------------------------------**")
+    
+    # Initialize Whisper model for audio transcription
+    initialize_whisper_model(silent=silent_mode)
 
 def simulate_directory_tree(operations, base_path):
     """Simulate the directory tree based on the proposed operations."""
@@ -93,17 +103,19 @@ def print_simulated_tree(tree, prefix=''):
 
 
 
+console = Console()
+
 def main():
     parser = argparse.ArgumentParser(description="Organize files based on content, date, or type.")
-    parser.add_argument("--input_dir", type=str, required=True, help="Path of the directory to organize.")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--input_dir", type=str, help="Path of the directory to organize.")
+    input_group.add_argument("--input_file", type=str, help="Path of the file to organize.")
     parser.add_argument("--output_dir", type=str, default="", help="Path to store organized files and folders (default: 'organized_folder' in input directory).")
     parser.add_argument("--mode", type=lambda m: Mode.from_int(int(m)), choices=list(Mode), required=True, help="Mode to organize files. Use 1 for By Content, 2 for By Date, or 3 for By Type.")
     parser.add_argument("--silent", type=str, choices=["yes", "no"], default="no", help="Enable silent mode (yes/no).")
     parser.add_argument("--dry_run", type=str, choices=["yes", "no"], default="yes", help="Perform a dry run without making actual changes (yes/no). Default is 'yes'.")
 
     args = parser.parse_args()
-
-    console = Console()
 
     silent_mode = args.silent == 'yes'
 
@@ -114,14 +126,29 @@ def main():
         sys.stdout = log_file
         sys.stderr = log_file
 
-    input_dir = args.input_dir
-    console.print(f"Input path successfully uploaded: {input_dir}")
+    if args.input_dir:
+        input_path = os.path.abspath(args.input_dir)
+        console.print(f"Input path successfully uploaded: {input_path}")
+    elif args.input_file:
+        input_path = os.path.abspath(args.input_file)
+        console.print(f"Input path successfully uploaded: {input_path}")
+    else:
+        # This case should ideally be caught by argparse, but as a fallback
+        console.print("[bold red]Error: No input directory or file specified.[/bold red]")
+        return
+
     console.print("--------------------------------------------------")
 
     if args.output_dir:
         output_dir = args.output_dir
+    elif args.input_dir:
+        output_dir = os.path.join(input_path, "organized_folder")
+    elif args.input_file:
+        # If a single file is processed, output to a generic 'organized_folder' in the current directory
+        output_dir = os.path.join(os.getcwd(), "organized_folder")
     else:
-        output_dir = os.path.join(input_dir, "organized_folder")
+        # Fallback for output_dir if no input is specified (shouldn't happen)
+        output_dir = os.path.join(os.getcwd(), "organized_folder")
     console.print(f"Output path successfully set to: {output_dir}")
     console.print("--------------------------------------------------")
 
@@ -132,13 +159,13 @@ def main():
     dry_run = args.dry_run == 'yes'
 
     start_time = time.time()
-    file_paths = collect_file_paths(input_dir)
+    file_paths = collect_file_paths(input_path)
     end_time = time.time()
 
     console.print(f"Time taken to load file paths: {end_time - start_time:.2f} seconds")
     console.print("--------------------------------------------------")
     console.print("Directory tree before organizing:")
-    display_directory_tree(input_dir)
+    display_directory_tree(input_path)
 
     console.print("**************************************************")
 
@@ -146,9 +173,6 @@ def main():
     operations = []
 
     if mode == Mode.CONTENT:
-        if not ollama_available:
-            console.print("[bold red]Error:[/bold red] 'By Content' mode requires Ollama, but it is not available. Please install Ollama and download the 'llama3' and 'llava' models.")
-            sys.exit(1)
         # Proceed with content mode
         if not silent_mode:
             console.print("Checking if the model is already downloaded. If not, downloading it now.")
@@ -160,7 +184,7 @@ def main():
             console.print("**************************************************")
 
         # Separate files by type
-        image_files, text_files = separate_files_by_type(file_paths)
+        image_files, text_files, audio_files = separate_files_by_type(file_paths)
 
         # Prepare text tuples for processing
         text_tuples = []
@@ -185,8 +209,13 @@ def main():
         renamed_files = set()
         processed_files = set()
 
+        # Process audio files
+        data_audio = process_audio_files(audio_files, audio_inference, silent=silent_mode, log_file=log_file)
+
         # Combine all data
-        all_data = data_images + data_texts
+        all_data = data_images + data_texts + data_audio
+
+
 
         # Compute the operations
         operations = compute_operations(
