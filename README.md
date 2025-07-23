@@ -56,7 +56,7 @@ After:
 * Dry Run Mode: check sorting results before committing changes
 * Silent Mode: save all logs to a txt file for quieter operation
 * Added file support:  `.md`, .`excel`, `.ppt`, and `.csv` 
-* Three sorting options: by content, by date, and by type
+* Three sorting options: by content (Mode 1), by date (Mode 2), and by type (Mode 3).
 * Improved CLI interaction experience
 * Added real-time progress bar for file analysis
 
@@ -177,7 +177,27 @@ With the environment activated and dependencies installed, run the script using:
 
 ### 6. Running the Script🎉
 ```zsh
-python main.py
+python main.py --input_dir /path/to/your/files --mode 1 --dry_run yes
+```
+
+To perform actual file operations, set `--dry_run` to `no`:
+```zsh
+python main.py --input_dir /path/to/your/files --output_dir /path/to/organized/files --mode 1 --dry_run no
+```
+
+Example for organizing by date:
+```zsh
+python main.py --input_dir /path/to/your/files --mode 2
+```
+
+Example for organizing by type:
+```zsh
+python main.py --input_dir /path/to/your/files --mode 3
+```
+
+Example for silent mode:
+```zsh
+python main.py --input_dir /path/to/your/files --mode 1 --silent yes
 ```
 
 ## Notes

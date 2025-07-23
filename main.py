@@ -2,6 +2,7 @@ import os
 import time
 import argparse
 import sys
+from modes import Mode
 from rich.console import Console
 
 from file_utils import (
@@ -90,50 +91,15 @@ def print_simulated_tree(tree, prefix=''):
             extension = '│   ' if pointer == '├── ' else '    '
             print_simulated_tree(tree[key], prefix + extension)
 
-def get_yes_no(prompt):
-    """Prompt the user for a yes/no response."""
-    while True:
-        response = input(prompt).strip().lower()
-        if response in ('yes', 'y'):
-            return True
-        elif response in ('no', 'n'):
-            return False
-        elif response == '/exit':
-            print("Exiting program.")
-            exit()
-        else:
-            print("Please enter 'yes' or 'no'. To exit, type '/exit'.")
 
-def get_mode_selection():
-    """Prompt the user to select a mode."""
-    while True:
-        print("Please choose the mode to organize your files:")
-        if ollama_available:
-            print("1. By Content")
-        print("2. By Date")
-        print("3. By Type")
-        response = input("Enter 1, 2, or 3 (or type '/exit' to exit): ").strip()
-        if response == '/exit':
-            print("Exiting program.")
-            exit()
-        elif response == '1':
-            if ollama_available:
-                return 'content'
-            else:
-                print("Invalid selection. 'By Content' mode is not available because Ollama client is not available.")
-        elif response == '2':
-            return 'date'
-        elif response == '3':
-            return 'type'
-        else:
-            print("Invalid selection. Please enter 1, 2, or 3. To exit, type '/exit'.")
 
 def main():
     parser = argparse.ArgumentParser(description="Organize files based on content, date, or type.")
     parser.add_argument("--input_dir", type=str, required=True, help="Path of the directory to organize.")
     parser.add_argument("--output_dir", type=str, default="", help="Path to store organized files and folders (default: 'organized_folder' in input directory).")
-    parser.add_argument("--mode", type=int, choices=[1, 2, 3], required=True, help="Mode to organize files: 1 (By Content), 2 (By Date), 3 (By Type).")
+    parser.add_argument("--mode", type=lambda m: Mode.from_int(int(m)), choices=list(Mode), required=True, help="Mode to organize files. Use 1 for By Content, 2 for By Date, or 3 for By Type.")
     parser.add_argument("--silent", type=str, choices=["yes", "no"], default="no", help="Enable silent mode (yes/no).")
+    parser.add_argument("--dry_run", type=str, choices=["yes", "no"], default="yes", help="Perform a dry run without making actual changes (yes/no). Default is 'yes'.")
 
     args = parser.parse_args()
 
@@ -163,7 +129,7 @@ def main():
     ensure_nltk_data()
 
     # Start with dry run set to True
-    dry_run = True
+    dry_run = args.dry_run == 'yes'
 
     start_time = time.time()
     file_paths = collect_file_paths(input_dir)
@@ -179,7 +145,10 @@ def main():
     mode = args.mode
     operations = []
 
-    if mode == 1:
+    if mode == Mode.CONTENT:
+        if not ollama_available:
+            console.print("[bold red]Error:[/bold red] 'By Content' mode requires Ollama, but it is not available. Please install Ollama and download the 'llama3' and 'llava' models.")
+            sys.exit(1)
         # Proceed with content mode
         if not silent_mode:
             console.print("Checking if the model is already downloaded. If not, downloading it now.")
@@ -227,10 +196,10 @@ def main():
             processed_files
         )
 
-    elif mode == 2:
+    elif mode == Mode.DATE:
         # Process files by date
         operations = process_files_by_date(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
-    elif mode == 3:
+    elif mode == Mode.TYPE:
         # Process files by type
         operations = process_files_by_type(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
     else:
