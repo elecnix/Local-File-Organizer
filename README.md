@@ -103,7 +103,7 @@ The best part? All AI processing happens 100% on your local device using [Ollama
 
 - **Operating System:** Compatible with Windows, macOS, and Linux.
 - **Python Version:** Python 3.12
-- **Conda:** Anaconda or Miniconda installed.
+
 - **Git:** For cloning the repository (or you can download the code as a ZIP file).
 
 ## Installation 🛠
@@ -130,16 +130,18 @@ Or download the repository as a ZIP file and extract it to your desired location
 
 ### 3. Set Up the Python Environment
 
-Create a new Conda environment named `local_file_organizer` with Python 3.12:
+First, ensure you have `uv` installed. If not, you can install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+Create a new virtual environment:
 
 ```zsh
-conda create --name local_file_organizer python=3.12
+uv venv
 ```
 
 Activate the environment:
 
 ```zsh
-conda activate local_file_organizer
+source .venv/bin/activate
 ```
 
 ### 4. Install Ollama and Download Models
@@ -180,33 +182,33 @@ With the environment activated and dependencies installed, run the script using:
 **Note:** For testing purposes, you can use the provided `sample_data` directory as your input. For example:
 
 ```zsh
-python main.py --input_dir ./sample_data --mode 1 --dry_run yes
+uv run python main.py --input_dir ./sample_data --mode 1 --dry_run yes
 ```
 
 To run with your own files, replace `/path/to/your/files` with the actual path to your input directory.
 
 ```zsh
-python main.py --input_dir /path/to/your/files --mode 1 --dry_run yes
+uv run python main.py --input_dir /path/to/your/files --mode 1 --dry_run yes
 ```
 
 To perform actual file operations, set `--dry_run` to `no`:
 ```zsh
-python main.py --input_dir /path/to/your/files --output_dir /path/to/organized/files --mode 1 --dry_run no
+uv run python main.py --input_dir /path/to/your/files --output_dir /path/to/organized/files --mode 1 --dry_run no
 ```
 
 Example for organizing by date:
 ```zsh
-python main.py --input_dir /path/to/your/files --mode 2
+uv run python main.py --input_dir /path/to/your/files --mode 2
 ```
 
 Example for organizing by type:
 ```zsh
-python main.py --input_dir /path/to/your/files --mode 3
+uv run python main.py --input_dir /path/to/your/files --mode 3
 ```
 
 Example for silent mode:
 ```zsh
-python main.py --input_dir /path/to/your/files --mode 1 --silent yes
+uv run python main.py --input_dir /path/to/your/files --mode 1 --silent yes
 ```
 
 ## Notes
