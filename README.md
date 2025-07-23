@@ -78,7 +78,6 @@ To update the project, navigate to the project directory and run `git pull`. The
 - [ ] Implement best practices like Johnny Decimal
 - [ ] Check file duplication
 - [ ] Dockerfile for easier installation
-- [ ] People from [Nexa](https://github.com/NexaAI/nexa-sdk) is helping me to make executables for macOS, Linux and Windows
 
 ## What It Does 🔍
 
