@@ -185,6 +185,8 @@ With the environment activated and dependencies installed, run the script using:
 uv run python main.py --input_dir ./sample_data --mode 1 --dry_run yes
 ```
 
+By default, if `--output_dir` is not specified, files will be organized into a new folder named `organized_folder` within your input directory.
+
 To run with your own files, replace `/path/to/your/files` with the actual path to your input directory.
 
 ```zsh
