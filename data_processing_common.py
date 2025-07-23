@@ -1,36 +1,8 @@
 import os
-import re
 import datetime  # Import datetime for date operations
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
-
-def sanitize_filename(name, max_length=50, max_words=5):
-    """Sanitize the filename by removing unwanted words and characters."""
-    # Remove file extension if present
-    name = os.path.splitext(name)[0]
-    # Remove unwanted words and data type words
-    name = re.sub(
-        r'\b(jpg|jpeg|png|gif|bmp|txt|md|pdf|docx|xls|xlsx|csv|ppt|pptx|image|picture|photo|this|that|these|those|here|there|'
-        r'please|note|additional|notes|folder|name|sure|heres|a|an|the|and|of|in|'
-        r'to|for|on|with|your|answer|should|be|only|summary|summarize|text|category)\b',
-        '',
-        name,
-        flags=re.IGNORECASE
-    )
-    # Remove non-word characters except underscores
-    sanitized = re.sub(r'[^\w\s]', '', name).strip()
-    # Replace multiple underscores or spaces with a single underscore
-    sanitized = re.sub(r'[\s_]+', '_', sanitized)
-    # Convert to lowercase
-    sanitized = sanitized.lower()
-    # Remove leading/trailing underscores
-    sanitized = sanitized.strip('_')
-    # Split into words and limit the number of words
-    words = sanitized.split('_')
-    limited_words = [word for word in words if word]  # Remove empty strings
-    limited_words = limited_words[:max_words]
-    limited_name = '_'.join(limited_words)
-    # Limit length
-    return limited_name[:max_length] if limited_name else 'untitled'
+from image_data_processing import get_date_from_exif, extract_date_from_filename # Import date extraction functions
+from file_utils import sanitize_filename # Import sanitize_filename from file_utils
 
 def process_files_by_date(file_paths, output_path, dry_run=False, silent=False, log_file=None):
     """Process files to organize them by date."""
@@ -120,7 +92,7 @@ def process_files_by_type(file_paths, output_path, dry_run=False, silent=False, 
 
     return operations
 
-def compute_operations(data_list, new_path, renamed_files, processed_files):
+def compute_operations(data_list, new_path, renamed_files, processed_files, prefix_dates=False):
     """Compute the file operations based on generated metadata."""
     operations = []
     for data in data_list:
@@ -131,7 +103,25 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
 
         # Prepare folder name and file name
         folder_name = data['foldername']
-        new_file_name = data['filename'] + os.path.splitext(file_path)[1]
+        base_filename = data['filename']
+        file_extension = os.path.splitext(file_path)[1]
+
+        # Apply date prefixing if enabled (logic moved from execute_operations)
+        # This ensures the simulated tree also reflects the date prefix
+        date_prefix = None
+        exif_date = get_date_from_exif(file_path)
+        if exif_date:
+            date_prefix = exif_date
+        else:
+            filename_only = os.path.basename(file_path)
+            date_from_filename = extract_date_from_filename(filename_only)
+            if date_from_filename != "null":
+                date_prefix = date_from_filename
+
+        if prefix_dates and date_prefix:
+            new_file_name = f"{date_prefix}_{base_filename}{file_extension}"
+        else:
+            new_file_name = f"{base_filename}{file_extension}"
 
         # Prepare new file path
         dir_path = os.path.join(new_path, folder_name)
@@ -139,7 +129,6 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
 
         # Handle duplicates
         counter = 1
-        original_new_file_name = new_file_name
         while new_file_path in renamed_files:
             new_file_name = f"{data['filename']}_{counter}" + os.path.splitext(file_path)[1]
             new_file_path = os.path.join(dir_path, new_file_name)
@@ -154,14 +143,15 @@ def compute_operations(data_list, new_path, renamed_files, processed_files):
             'destination': new_file_path,
             'link_type': link_type,
             'folder_name': folder_name,
-            'new_file_name': new_file_name
+            'new_file_name': new_file_name,
+            'prefix_dates': True if date_prefix else False # Indicate if date prefix was applied
         }
         operations.append(operation)
         renamed_files.add(new_file_path)
 
     return operations  # Return the list of operations for display or further processing
 
-def execute_operations(operations, dry_run=False, silent=False, log_file=None):
+def execute_operations(operations, dry_run=False, silent=False, log_file=None, prefix_dates=False):
     """Execute the file operations."""
     total_operations = len(operations)
 
@@ -177,6 +167,10 @@ def execute_operations(operations, dry_run=False, silent=False, log_file=None):
             destination = operation['destination']
             link_type = operation['link_type']
             dir_path = os.path.dirname(destination)
+
+            # The new_file_name already includes the date prefix if applicable
+            new_file_name = operation['new_file_name']
+            destination = os.path.join(dir_path, os.path.basename(new_file_name))
 
             if dry_run:
                 message = f"Dry run: would create {link_type} from '{source}' to '{destination}'"

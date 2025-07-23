@@ -112,6 +112,7 @@ def main():
     input_group.add_argument("--input_file", type=str, help="Path of the file to organize.")
     parser.add_argument("--output_dir", type=str, default="", help="Path to store organized files and folders (default: 'organized_folder' in input directory).")
     parser.add_argument("--mode", type=str, choices=[mode.name.lower() for mode in Mode], required=True, help="Mode to organize files. Use 'content' for By Content, 'date' for By Date, or 'type' for By Type.")
+    parser.add_argument("--prefix_dates", type=str, choices=["yes", "no"], default="no", help="Prefix image files with yyyy-mm-dd if a date is found (yes/no).")
     parser.add_argument("--silent", type=str, choices=["yes", "no"], default="no", help="Enable silent mode (yes/no).")
     parser.add_argument("--dry_run", type=str, choices=["yes", "no"], default="yes", help="Perform a dry run without making actual changes (yes/no). Default is 'yes'.")
 
@@ -172,6 +173,11 @@ def main():
     mode = Mode.from_string(args.mode)
     operations = []
 
+    prefix_dates = args.prefix_dates == 'yes'
+
+    if prefix_dates:
+        console.print("Prefixing image files with yyyy-mm-dd if a date is found.")
+    
     if mode == Mode.CONTENT:
         # Proceed with content mode
         if not silent_mode:
@@ -220,15 +226,16 @@ def main():
             all_data,
             output_dir,
             renamed_files,
-            processed_files
+            processed_files,
+            prefix_dates=prefix_dates
         )
 
     elif mode == Mode.DATE:
         # Process files by date
         operations = process_files_by_date(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
     elif mode == Mode.TYPE:
-        # Process files by type
-        operations = process_files_by_type(file_paths, output_dir, dry_run=dry_run, silent=silent_mode, log_file=log_file)
+        # Compute operations (renames, moves, etc.)
+        operations = compute_operations(data_images, output_dir, mode, prefix_dates=prefix_dates, silent=silent_mode, log_file=log_file)
     else:
         console.print("Invalid mode selected.")
         return
@@ -250,7 +257,8 @@ def main():
         operations,
         dry_run=dry_run,
         silent=silent_mode,
-        log_file=log_file
+        log_file=log_file,
+        prefix_dates=prefix_dates
     )
 
     console.print("The files have been organized successfully.")

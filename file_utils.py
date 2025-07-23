@@ -1,4 +1,5 @@
 import os
+import re # Import re for sanitize_filename
 
 import fitz  # PyMuPDF
 import docx
@@ -176,5 +177,34 @@ def separate_files_by_type(file_paths):
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
     audio_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in audio_extensions]
     return image_files, text_files, audio_files
+
+def sanitize_filename(name, max_length=50, max_words=5):
+    """Sanitize the filename by removing unwanted words and characters."""
+    # Remove file extension if present
+    name = os.path.splitext(name)[0]
+    # Remove unwanted words and data type words
+    name = re.sub(
+        r'\b(jpg|jpeg|png|gif|bmp|txt|md|pdf|docx|xls|xlsx|csv|ppt|pptx|image|picture|photo|this|that|these|those|here|there|'
+        r'please|note|additional|notes|folder|name|sure|heres|a|an|the|and|of|in|'
+        r'to|for|on|with|your|answer|should|be|only|summary|summarize|text|category)\b',
+        '',
+        name,
+        flags=re.IGNORECASE
+    )
+    # Remove non-word characters except underscores
+    sanitized = re.sub(r'[^\w\s]', '', name).strip()
+    # Replace multiple underscores or spaces with a single underscore
+    sanitized = re.sub(r'[\s_]+', '_', sanitized)
+    # Convert to lowercase
+    sanitized = sanitized.lower()
+    # Remove leading/trailing underscores
+    sanitized = sanitized.strip('_')
+    # Split into words and limit the number of words
+    words = sanitized.split('_')
+    limited_words = [word for word in words if word]  # Remove empty strings
+    limited_words = limited_words[:max_words]
+    limited_name = '_'.join(limited_words)
+    # Limit length
+    return limited_name[:max_length] if limited_name else 'untitled'
 
 # TODO:ebook: '.mobi', '.azw', '.azw3', '.epub',
