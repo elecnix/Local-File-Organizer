@@ -99,6 +99,7 @@ The best part? All AI processing happens 100% on your local device using [Ollama
 ## Supported File Types 📁
 
 - **Images:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`
+- **Audio:** `.mp3`, `.wav`, `.flac`
 - **Text Files:** `.txt`, `.docx`, `.md`
 - **Spreadsheets:** `.xlsx`, `.csv`
 - **Presentations:** `.ppt`, `.pptx`
@@ -216,6 +217,11 @@ uv run python main.py --input_dir /path/to/your/files --mode 3
 Example for silent mode:
 ```zsh
 uv run python main.py --input_dir /path/to/your/files --mode 1 --silent yes
+```
+
+Example for processing a single audio file:
+```zsh
+uv run python main.py --input_file /path/to/your/audio.mp3 --mode 1 --dry_run yes
 ```
 
 ## Notes
