@@ -55,12 +55,12 @@ After:
 * Now powered by Ollama for local AI processing!
 * Dry Run Mode: check sorting results before committing changes
 * Silent Mode: save all logs to a txt file for quieter operation
-* Added file support:  `.md`, .`excel`, `.ppt`, and `.csv` 
+* Added file support:  `.md`, `.xlsx`, `.pptx`, and `.csv` 
 * Three sorting options: by content (Mode 1), by date (Mode 2), and by type (Mode 3).
 * Improved CLI interaction experience
 * Added real-time progress bar for file analysis
 
-Please update the project by deleting the original project folder and reinstalling the requirements. Refer to the installation guide from Step 4.
+Please update the project by deleting the original project folder and reinstalling the requirements. Refer to the Installation section for detailed steps.
 
 
 ## Roadmap 📅
@@ -102,7 +102,7 @@ The best part? All AI processing happens 100% on your local device using [Ollama
 ## Prerequisites 💻
 
 - **Operating System:** Compatible with Windows, macOS, and Linux.
-- **Python Version:** Python 3.12
+- **Python Version:** Python 3.12 or later
 
 - **Git:** For cloning the repository (or you can download the code as a ZIP file).
 
@@ -239,3 +239,4 @@ uv run python main.py --input_dir /path/to/your/files --mode 1 --silent yes
 This project is dual-licensed under the MIT License and Apache 2.0 License. You may choose which license you prefer to use for this project.
 
 - See the [MIT License](LICENSE-MIT) for more details.
+- See the [Apache 2.0 License](LICENSE-APACHE) for more details.
