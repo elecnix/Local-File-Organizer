@@ -3,7 +3,7 @@ import torch
 import whisper
 import json
 from data_processing_common import sanitize_filename
-
+import re
 from rich.console import Console
 
 console = Console()
@@ -64,9 +64,16 @@ JSON Output:"""
 
             ollama_result = ollama_inference_function.generate(prompt)
             
+            # Extract JSON from the Ollama result using regex
+            json_match = re.search(r'\{.*\}', ollama_result, re.DOTALL)
+            if json_match:
+                json_string = json_match.group(0)
+            else:
+                json_string = ""
+
             # Parse the JSON result
             try:
-                parsed_result = json.loads(ollama_result)
+                parsed_result = json.loads(json_string)
                 description = parsed_result.get('description', '').strip()
                 foldername = sanitize_filename(parsed_result.get('foldername', '').strip())
                 filename = sanitize_filename(parsed_result.get('filename', '').strip())

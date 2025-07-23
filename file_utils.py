@@ -118,7 +118,7 @@ def separate_files_by_type(file_paths):
     """Separate files into images, text, and audio files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
     text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
-    audio_extensions = ('.mp3', '.wav', '.flac', '.aac', '.ogg') # Common audio extensions
+    audio_extensions = ('.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a') # Common audio extensions
 
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
