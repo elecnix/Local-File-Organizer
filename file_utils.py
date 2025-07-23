@@ -4,6 +4,11 @@ import fitz  # PyMuPDF
 import docx
 import pandas as pd  # Import pandas to read Excel and CSV files
 from pptx import Presentation  # Import Presentation for PPT files
+from ollama_inference import OllamaTextInference, OllamaVLMInference
+
+# Instantiate Ollama inference classes
+ollama_text_inference = OllamaTextInference()
+ollama_vlm_inference = OllamaVLMInference()
 
 def read_text_file(file_path):
     """Read text content from a text file."""
@@ -27,20 +32,67 @@ def read_docx_file(file_path):
         return None
 
 def read_pdf_file(file_path):
-    """Read text content from a PDF file."""
+    """Read text content and visually interpret images from a PDF file."""
+    extracted_text = []
+    visual_interpretations = []
+    temp_image_folder = "temp_pdf_images"
+
     try:
         doc = fitz.open(file_path)
-        # Read only the first few pages to speed up processing
-        num_pages_to_read = 3  # Adjust as needed
-        full_text = []
+        num_pages_to_read = 3
+
         for page_num in range(min(num_pages_to_read, len(doc))):
             page = doc.load_page(page_num)
-            full_text.append(page.get_text())
-        pdf_content = '\n'.join(full_text)
-        return pdf_content
+            extracted_text.append(page.get_text())
+
+        # Extract images and get visual interpretations
+        image_paths = extract_images_from_pdf(file_path, temp_image_folder)
+        for img_path in image_paths:
+            prompt = "Describe this image in detail, focusing on any text or important visual information."
+            interpretation = ollama_vlm_inference.generate_vision(prompt, img_path)
+            visual_interpretations.append(f"Image {os.path.basename(img_path)}: {interpretation}")
+
+        # Combine results
+        combined_content = "extracted text:\n" + "\n".join(extracted_text)
+        if visual_interpretations:
+            combined_content += "\n\nvisual interpretation:\n" + "\n".join(visual_interpretations)
+
+        return combined_content
+
     except Exception as e:
-        print(f"Error reading PDF file {file_path}: {e}")
+        print(f"Error processing PDF file {file_path}: {e}")
         return None
+    finally:
+        # Clean up temporary image files and folder
+        if os.path.exists(temp_image_folder):
+            for file_name in os.listdir(temp_image_folder):
+                file_path = os.path.join(temp_image_folder, file_name)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                except Exception as e:
+                    print(f"Error removing file {file_path}: {e}")
+            try:
+                os.rmdir(temp_image_folder)
+            except Exception as e:
+                print(f"Error removing directory {temp_image_folder}: {e}")
+
+def extract_images_from_pdf(pdf_path, output_folder="temp_images"):
+    """Extract images from a PDF and save them to a temporary folder."""
+    os.makedirs(output_folder, exist_ok=True)
+    doc = fitz.open(pdf_path)
+    image_paths = []
+    for i in range(len(doc)):
+        for img in doc.get_page_images(i):
+            xref = img[0]
+            base_image = doc.extract_image(xref)
+            image_bytes = base_image["image"]
+            image_ext = base_image["ext"]
+            image_filename = os.path.join(output_folder, f"page{i+1}-img{xref}.{image_ext}")
+            with open(image_filename, "wb") as f:
+                f.write(image_bytes)
+            image_paths.append(image_filename)
+    return image_paths
 
 def read_spreadsheet_file(file_path):
     """Read text content from an Excel or CSV file."""

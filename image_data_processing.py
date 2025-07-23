@@ -1,4 +1,5 @@
 import re
+import json
 import os
 import time
 from nltk.tokenize import word_tokenize
@@ -51,59 +52,35 @@ def generate_image_metadata(image_path, progress, task_id, image_inference, text
     """Generate description, folder name, and filename for an image file."""
 
     # Total steps in processing an image
-    total_steps = 3
+    total_steps = 2 # One for vision inference, one for text inference
 
     # Step 1: Generate description using image_inference
     description_prompt = "Please provide a detailed description of this image, focusing on the main subject and any important details."
     description = image_inference.generate_vision(description_prompt, image_path).strip()
     progress.update(task_id, advance=1 / total_steps)
 
-    # Step 2: Generate filename using text_inference
-    filename_prompt = f"""Based on the description below, generate a specific and descriptive filename for the image.
-Limit the filename to a maximum of 3 words. Use nouns and avoid starting with verbs like 'depicts', 'shows', 'presents', etc.
-Do not include any data type words like 'image', 'jpg', 'png', etc. Use only letters and connect words with underscores.
+    # Step 2: Generate filename and folder name using text_inference based on the description
+    prompt = f"""Based on the description below, generate a suitable folder name (max 2 words, nouns only) and a descriptive filename (max 3 words, nouns only, underscores for spaces). Return the output as a JSON object with keys 'foldername' and 'filename'.
 
 Description: {description}
 
 Example:
 Description: A photo of a sunset over the mountains.
-Filename: sunset_over_mountains
+JSON Output: {{ "foldername": "landscapes", "filename": "sunset_over_mountains" }}
 
-Now generate the filename.
+Now generate the folder name and filename.
 
-Output only the filename, without any additional text.
-
-Filename:"""
-    filename = text_inference.generate(filename_prompt).strip()
-    # Remove 'Filename:' prefix if present
-    filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
-    progress.update(task_id, advance=1 / total_steps)
-
-    # Step 3: Generate folder name from description using text_inference
-    foldername_prompt = f"""Based on the description below, generate a general category or theme that best represents the main subject of this image.
-This will be used as the folder name. Limit the category to a maximum of 2 words. Use nouns and avoid verbs.
-Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
-
-Description: {description}
-
-Examples:
-1. Description: A photo of a sunset over the mountains.
-   Category: landscapes
-
-2. Description: An image of a smartphone displaying a storage app with various icons and information.
-   Category: technology
-
-3. Description: A close-up of a blooming red rose with dew drops.
-   Category: nature
-
-Now generate the category.
-
-Output only the category, without any additional text.
-
-Category:"""
-    foldername = text_inference.generate(foldername_prompt).strip()
-    # Remove 'Category:' prefix if present
-    foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
+JSON Output:"""
+    output = text_inference.generate(prompt).strip()
+    # Extract JSON string using regex
+    json_match = re.search(r'\{.*\}', output, re.DOTALL)
+    if json_match:
+        json_string = json_match.group(0)
+        output_dict = json.loads(json_string)
+    else:
+        raise ValueError(f"Could not find JSON in model output: {output}")
+    foldername = output_dict['foldername']
+    filename = output_dict['filename']
     progress.update(task_id, advance=1 / total_steps)
 
     # Remove any unwanted words and stopwords

@@ -52,6 +52,7 @@ After:
 ## Updates 🚀
 
 **[July 2025] v0.0.3**:
+* **Visual Interpretation of PDFs**: Extracts images from PDF files and uses a vision model to interpret their content, enhancing the overall understanding of PDF documents.
 * **Full Audio File Support**: Transcribe audio using Whisper and organize based on content using Ollama.
 * **Ollama Integration Enhanced**: Fully transitioned to Ollama for all AI processing (text, image, and audio), removing all Nexa dependencies.
 * **Improved Argument Handling**: `--input_dir` and `--input_file` are now mutually exclusive and required.
@@ -242,7 +243,7 @@ uv run python main.py --input_file /path/to/your/audio.mp3 --mode 1 --dry_run ye
   - The script uses multiprocessing to improve performance.
 
 - **Customizing Prompts:**
-  - You can adjust prompts in `data_processing.py` to change how metadata is generated.
+  - You can adjust prompts in `text_data_processing.py`, `image_data_processing.py`, and `audio_data_processing.py` to change how metadata is generated.
 
 ## License
 

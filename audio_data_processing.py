@@ -64,23 +64,18 @@ JSON Output:"""
 
             ollama_result = ollama_inference_function.generate(prompt)
             
-            # Extract JSON from the Ollama result using regex
+            # Extract JSON string using regex
             json_match = re.search(r'\{.*\}', ollama_result, re.DOTALL)
             if json_match:
                 json_string = json_match.group(0)
+                output_dict = json.loads(json_string)
             else:
-                json_string = ""
+                raise ValueError(f"Could not find JSON in model output: {ollama_result}")      
+            
 
-            # Parse the JSON result
-            try:
-                parsed_result = json.loads(json_string)
-                description = parsed_result.get('description', '').strip()
-                foldername = sanitize_filename(parsed_result.get('foldername', '').strip())
-                filename = sanitize_filename(parsed_result.get('filename', '').strip())
-            except json.JSONDecodeError:
-                description = f"Transcription of {os.path.basename(audio_path)}"
-                foldername = "audio_transcriptions"
-                filename = sanitize_filename(f"audio_{os.path.basename(audio_path).split('.')[0]}")
+            description = output_dict.get('description', '').strip()
+            foldername = sanitize_filename(output_dict.get('foldername', '').strip())
+            filename = sanitize_filename(output_dict.get('filename', '').strip())
             if not silent:
                 console.print("[bold green]Ollama inference complete.[/bold green]")
             return {

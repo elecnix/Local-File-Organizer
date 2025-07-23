@@ -1,4 +1,5 @@
 import re
+import json
 import os
 import time
 from nltk.tokenize import word_tokenize
@@ -62,58 +63,30 @@ def generate_text_metadata(input_text, file_path, progress, task_id, text_infere
     """Generate description, folder name, and filename for a text document."""
 
     # Total steps in processing a text file
-    total_steps = 3
+    total_steps = 1
 
-    # Step 1: Generate description
-    description = summarize_text_content(input_text, text_inference)
-    progress.update(task_id, advance=1 / total_steps)
+    # Step 1: Generate description, folder name, and filename in one go
+    prompt = f"""Analyze the following text and provide a concise description, a suitable folder name (max 2 words, nouns only), and a descriptive filename (max 3 words, nouns only, underscores for spaces). Return the output as a JSON object with keys 'description', 'foldername', and 'filename'.
 
-    # Step 2: Generate filename
-    filename_prompt =  f"""Based on the summary below, generate a specific and descriptive filename that captures the essence of the document.
-Limit the filename to a maximum of 3 words. Use nouns and avoid starting with verbs like 'depicts', 'shows', 'presents', etc.
-Do not include any data type words like 'text', 'document', 'pdf', etc. Use only letters and connect words with underscores.
+Example:
+Text: This document discusses the principles of quantum mechanics and its applications.
+JSON Output: {{ "description": "Principles and applications of quantum mechanics", "foldername": "physics", "filename": "quantum_mechanics_principles" }}
 
-Summary: {description}
+Text: {input_text}
 
-Examples:
-1. Summary: A research paper on the fundamentals of string theory.
-   Filename: fundamentals_of_string_theory
+JSON Output:"""
+    output = text_inference.generate(prompt).strip()
+    # Extract JSON string using regex
+    json_match = re.search(r'\{.*\}', output, re.DOTALL)
+    if json_match:
+        json_string = json_match.group(0)
+        output_dict = json.loads(json_string)
+    else:
+        raise ValueError(f"Could not find JSON in model output: {output}")
+    description = output_dict['description']
+    foldername = output_dict['foldername']
+    filename = output_dict['filename']
 
-2. Summary: An article discussing the effects of climate change on polar bears.
-   Filename: climate_change_polar_bears
-
-Now generate the filename.
-
-Output only the filename, without any additional text.
-
-Filename:"""
-    filename = text_inference.generate(filename_prompt).strip()
-    # Remove 'Filename:' prefix if present
-    filename = re.sub(r'^Filename:\s*', '', filename, flags=re.IGNORECASE).strip()
-    progress.update(task_id, advance=1 / total_steps)
-
-    # Step 3: Generate folder name from summary
-    foldername_prompt = f"""Based on the summary below, generate a general category or theme that best represents the main subject of this document.
-This will be used as the folder name. Limit the category to a maximum of 2 words. Use nouns and avoid verbs.
-Do not include specific details, words from the filename, or any generic terms like 'untitled' or 'unknown'.
-
-Summary: {description}
-
-Examples:
-1. Summary: A research paper on the fundamentals of string theory.
-   Category: physics
-
-2. Summary: An article discussing the effects of climate change on polar bears.
-   Category: environment
-
-Now generate the category.
-
-Output only the category, without any additional text.
-
-Category:"""
-    foldername = text_inference.generate(foldername_prompt).strip()
-    # Remove 'Category:' prefix if present
-    foldername = re.sub(r'^Category:\s*', '', foldername, flags=re.IGNORECASE).strip()
     progress.update(task_id, advance=1 / total_steps)
 
     # Remove unwanted words and stopwords

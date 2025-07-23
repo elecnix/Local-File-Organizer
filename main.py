@@ -111,7 +111,7 @@ def main():
     input_group.add_argument("--input_dir", type=str, help="Path of the directory to organize.")
     input_group.add_argument("--input_file", type=str, help="Path of the file to organize.")
     parser.add_argument("--output_dir", type=str, default="", help="Path to store organized files and folders (default: 'organized_folder' in input directory).")
-    parser.add_argument("--mode", type=lambda m: Mode.from_int(int(m)), choices=list(Mode), required=True, help="Mode to organize files. Use 1 for By Content, 2 for By Date, or 3 for By Type.")
+    parser.add_argument("--mode", type=str, choices=[mode.name.lower() for mode in Mode], required=True, help="Mode to organize files. Use 'content' for By Content, 'date' for By Date, or 'type' for By Type.")
     parser.add_argument("--silent", type=str, choices=["yes", "no"], default="no", help="Enable silent mode (yes/no).")
     parser.add_argument("--dry_run", type=str, choices=["yes", "no"], default="yes", help="Perform a dry run without making actual changes (yes/no). Default is 'yes'.")
 
@@ -169,7 +169,7 @@ def main():
 
     console.print("**************************************************")
 
-    mode = args.mode
+    mode = Mode.from_string(args.mode)
     operations = []
 
     if mode == Mode.CONTENT:
@@ -214,8 +214,6 @@ def main():
 
         # Combine all data
         all_data = data_images + data_texts + data_audio
-
-
 
         # Compute the operations
         operations = compute_operations(
